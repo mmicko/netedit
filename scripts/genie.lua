@@ -29,6 +29,9 @@ SRC_DIR = path.getabsolute("../src")
 BGFX_DIR   = path.getabsolute("../3rdparty/bgfx")
 BX_DIR     = path.getabsolute("../3rdparty/bx")
 
+MAME_DIR = (path.getabsolute("..") .. "/")
+LIBTYPE = "StaticLib"
+
 local BGFX_BUILD_DIR = path.join("../", "build")
 local BGFX_THIRD_PARTY_DIR = path.join(BGFX_DIR, "3rdparty")
 
@@ -36,12 +39,29 @@ defines {
 	"BX_CONFIG_ENABLE_MSVC_LEVEL4_WARNINGS=1"
 }
 
-dofile (path.join(BX_DIR, "scripts/toolchain.lua"))
+dofile (path.join(MAME_DIR, "scripts/toolchain.lua"))
 if not toolchain(BGFX_BUILD_DIR, BGFX_THIRD_PARTY_DIR) then
 	return -- no action specified
 end
 
 function copyLib()
+end
+
+function addprojectflags()
+	if _ACTION == "gmake" then
+		buildoptions {
+			"-Wno-unused-parameter",
+			"-Wno-shadow",
+			"-Wno-array-bounds",
+		}	
+	end
+	configuration { "vs*" }
+		buildoptions {
+			"/wd4244", -- warning C4244: 'argument' : conversion from 'xxx' to 'xxx', possible loss of data
+			"/wd4334", -- warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+			"/wd4800", -- warning C4800: 'type' : forcing value to bool 'true' or 'false' (performance warning)
+			"/wd4723", -- warning C4723: 'potential divide by 0
+		}			
 end
 
 dofile (path.join(BGFX_DIR, "scripts", "bgfx.lua"))
@@ -51,6 +71,7 @@ dofile (path.join(BGFX_DIR, "scripts", "example-common.lua"))
 
 group "libs"
 bgfxProject("", "StaticLib", {})
+dofile("netlist.lua")
 
 group "main"
 
@@ -62,9 +83,6 @@ project ("netedit")
 targetdir(MODULE_DIR)
 targetsuffix ""
 
-removeflags {
-	"NoExceptions",
-} 
 configuration {}
 
 includedirs {
@@ -91,6 +109,7 @@ end
 links {
 	"bgfx",
 	"example-common",
+	"netlist",
 }
 configuration { "mingw*" }
 	targetextension ".exe"
